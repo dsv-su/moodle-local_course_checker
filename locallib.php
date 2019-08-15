@@ -15,10 +15,10 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * DSV organization library code.
+ * Course checker functions.
  *
  * @package   local_course_checker
- * @copyright 2015 Pavel Sokolov <pavel.m.sokolov@gmail.com>
+ * @copyright 2019 Pavel Sokolov <pavel.m.sokolov@gmail.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -26,7 +26,6 @@ function api_call($url) {
     $username = get_config('local_course_checker', 'username');
     $password = get_config('local_course_checker', 'password');
     $apiurl = get_config('local_course_checker', 'restapiurl');
-    //$employeeresource = get_config('local_dsv_organization', 'employeeresource');
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -48,12 +47,12 @@ function api_call($url) {
 
 function extract_shortname($role) {
     global $DB;
-    //return $DB->get_record('role', array('id' => $role->roleid))->shortname;
     return $role->shortname;
 }
 
 function check_courses() {
     global $DB, $OUTPUT;
+
     $select = "name LIKE '%VT20%' or name LIKE '%HT20%'";
     $terms = $DB->get_records_select('course_categories', $select, null, 'id DESC');
     if (!isset($_POST['term'])) {
@@ -142,7 +141,7 @@ function check_courses() {
                 update_course($course);
             }
 
-            // Compate course end date
+            // Compare course end date
             $d1 = $course->enddate>0 ? date("Y-m-d H:i", $course->enddate): 'none';
             if ($course->enddate <> strtotime($course_daisy->endDate)) {
                 $d2 = date("Y-m-d H:i", strtotime($course_daisy->endDate));
@@ -151,7 +150,7 @@ function check_courses() {
                 $enddate = "$d1 ".$OUTPUT->pix_icon('t/approve', '');
             }
 
-            // Compate participants
+            // Compare participants
             $coursesegmentresource = get_config('local_course_checker', 'coursesegmentresource');
             $participantsresource = get_config('local_course_checker', 'participantsresource');
             $participants = count(api_call($coursesegmentresource.'/'.$course->idnumber.'/'.$participantsresource));

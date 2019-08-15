@@ -18,7 +18,7 @@
  * Run the DSV organization from the Web.
  *
  * @package    local_course_checker
- * @copyright  сн2019 Pavel Sokolov <pavel.m.sokolov@gmail.com>
+ * @copyright  2019 Pavel Sokolov <pavel.m.sokolov@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
