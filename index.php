@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Run the DSV organization from the Web.
+ * Render main course checker admin view.
  *
  * @package    local_course_checker
  * @copyright  2019 Pavel Sokolov <pavel.m.sokolov@gmail.com>

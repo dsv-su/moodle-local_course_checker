@@ -69,7 +69,7 @@ function check_courses() {
 
     $category = $DB->get_record('course_categories', array('id' => $_POST['term']));
 
-    $courses = get_courses($category->id);
+    $courses = get_courses($category->id, 'c.id DESC');
 
     echo $OUTPUT->heading($category->name . ' category courses overview');
 
@@ -111,14 +111,23 @@ function check_courses() {
                     if ($u && array_search('manager', $roleshortnames) !== false) {
                         $responsibles[]=$c->firstName . ' ' .$c->lastName . ' ' .
                             $OUTPUT->pix_icon('t/approve', '');
+                    } elseif ($u && array_search('editingteacher', $roleshortnames) !== false) {
+                        $responsibles[]=$c->firstName . ' ' .$c->lastName . ' (teacher) ' .
+                            $OUTPUT->pix_icon('i/completion-auto-enabled', '');
+                    } elseif ($u && array_search('teacher', $roleshortnames) !== false) {
+                        $responsibles[]=$c->firstName . ' ' .$c->lastName . ' (non-editing teacher) ' .
+                            $OUTPUT->pix_icon('i/completion-auto-enabled', '');
                     } else {
                         $responsibles[]=$c->firstName . ' ' .$c->lastName . ' ' .
                             $OUTPUT->pix_icon('t/delete', '');
                     }
                 } else {
-                    if ($u && (array_search('editingteacher', $roleshortnames) !== false || array_search('teacher', $roleshortnames) !== false)) {
+                    if ($u && array_search('editingteacher', $roleshortnames) !== false) {
                         $teachers[]=$c->firstName . ' ' .$c->lastName . ' ' .
                             $OUTPUT->pix_icon('t/approve', '');
+                    } elseif ($u && array_search('teacher', $roleshortnames) !== false) {
+                        $teachers[]=$c->firstName . ' ' .$c->lastName . ' (non-editing teacher) ' .
+                            $OUTPUT->pix_icon('i/completion-auto-enabled', '');
                     } else {
                         $teachers[]=$c->firstName . ' ' .$c->lastName . ' ' .
                             $OUTPUT->pix_icon('t/delete', '');
