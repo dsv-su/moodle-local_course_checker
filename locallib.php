@@ -68,8 +68,23 @@ function check_courses() {
     echo "<input type='submit' name='submit'/></form>";
 
     $category = $DB->get_record('course_categories', array('id' => $_POST['term']));
+    if (strpos($category->name, 'VT') !== false) {
+        $semester = substr($category->name, 2).'1';
+    } else {
+        $semester = substr($category->name, 2).'2';
+    }
 
-    $courses = get_courses($category->id, 'c.id DESC');
+    $coursesegmentresource = get_config('local_course_checker', 'coursesegmentresource');
+    $courses = api_call($coursesegmentresource . '?semester='.$semester);
+  
+    // Sort by the start date ASC, then by idnumber ASC.
+    usort($courses, function($a, $b) {
+        if ($a->startDate == $b->startDate) {
+            return ($a->id - $b->id);
+        } else {
+            return ($a->startDate > $b->startDate);
+        }
+    });
 
     echo $OUTPUT->heading($category->name . ' category courses overview');
 
@@ -77,35 +92,34 @@ function check_courses() {
     $table->head = array('Course code', 'Course ID', 'Responsible', 'Teacher', 'REST enrolled', 'Start', 'End');
 
     foreach ($courses as $course) {
-
         $row = array();
-        $course_daisy = null;
+        $course_ilearn = null;
 
-        if (is_numeric($course->idnumber)) {
-            $coursesegmentresource = get_config('local_course_checker', 'coursesegmentresource');
-            $course_daisy = api_call($coursesegmentresource.'/'.$course->idnumber);
+        if (is_numeric($course->id)) {
+            if ($DB->record_exists('course', array('idnumber' => $course->id))) {
+                $course_ilearn = $DB->get_record('course', array('idnumber' => $course->id));
+            } else {
+                // try to find by the name schema
+                $course_ilearn = $DB->get_record('course', array('shortname' => $course->designation.' '.$category->name));
+            }
         }
 
-        $code = rtrim(str_replace($category->name, '', $course->shortname));
-        //$code = substr($course->shortname, 0, strrpos($course->shortname, ' '));
+        $code = $course->designation;
 
-        $courseurl = course_get_url($course->id);
-
-        if (!$course_daisy) {
+        if (!$course_ilearn) {
             $row = array(html_writer::link($courseurl, $code, array('target' => '_blank')),
-                $OUTPUT->error_text('Missing Daisy ID!'), '', '', '', '', '');
+                $OUTPUT->error_text('Missing iLearn2 instance!'), '', '', '', date("Y-m-d H:i", strtotime($course->startDate)), date("Y-m-d H:i", strtotime($course->endDate)));
         } else {
+            $courseurl = course_get_url($course_ilearn->id);
             // List course responsibles and teachers
             $responsibles = array();
             $teachers = array();
-            foreach ($course_daisy->contributors as $contributor) {
+            foreach ($course->contributors as $contributor) {
                 $personresource = get_config('local_course_checker', 'personresource');
                 $c = api_call($personresource.'/'.$contributor->personId);
                 $u = $DB->get_record('user', array('firstname' => $c->firstName, 'lastname' => $c->lastName, 'deleted' => 0, 'idnumber' => $contributor->personId));
                 if ($u) {
-                    //$roleshortnames = array_map('extract_shortname', $DB->get_records('role_assignments', array('contextid' => context_course::instance($course->id)->id, 'userid' => $u->id)));
-                    $roleshortnames = array_map('extract_shortname', get_user_roles(context_course::instance($course->id), $u->id));
-
+                    $roleshortnames = array_map('extract_shortname', get_user_roles(context_course::instance($course_ilearn->id), $u->id));
                 }
                 if ($contributor->responsible) {
                     if ($u && array_search('manager', $roleshortnames) !== false) {
@@ -136,24 +150,24 @@ function check_courses() {
             }
 
             // Compare course start date
-            $d1 = date("Y-m-d H:i", $course->startdate);
-            if ($course->startdate <> strtotime($course_daisy->startDate)) {
-                $d2 = date("Y-m-d H:i", strtotime($course_daisy->startDate));
+            $d1 = date("Y-m-d H:i", $course_ilearn->startdate);
+            if ($course_ilearn->startdate <> strtotime($course->startDate)) {
+                $d2 = date("Y-m-d H:i", strtotime($course->startDate));
                 $startdate = "ilearn2: $d1, <br/> daisy: $d2";
             } else {
                 $startdate = "$d1 ".$OUTPUT->pix_icon('t/approve', '');
             }
 
             // Update course enddate when it's empty
-            if ($course->enddate == 0) {
-                $course->enddate = strtotime($course_daisy->endDate);
-                update_course($course);
+            if ($course_ilearn->enddate == 0) {
+                $course_ilearn->enddate = strtotime($course->endDate);
+                update_course($course_ilearn);
             }
 
             // Compare course end date
-            $d1 = $course->enddate>0 ? date("Y-m-d H:i", $course->enddate): 'none';
-            if ($course->enddate <> strtotime($course_daisy->endDate)) {
-                $d2 = date("Y-m-d H:i", strtotime($course_daisy->endDate));
+            $d1 = $course_ilearn->enddate>0 ? date("Y-m-d H:i", $course_ilearn->enddate): 'none';
+            if ($course_ilearn->enddate <> strtotime($course->endDate)) {
+                $d2 = date("Y-m-d H:i", strtotime($course->endDate));
                 $enddate = "ilearn2: $d1, <br/> daisy: $d2";
             } else {
                 $enddate = "$d1 ".$OUTPUT->pix_icon('t/approve', '');
@@ -162,13 +176,13 @@ function check_courses() {
             // Compare participants
             $coursesegmentresource = get_config('local_course_checker', 'coursesegmentresource');
             $participantsresource = get_config('local_course_checker', 'participantsresource');
-            $participants = count(api_call($coursesegmentresource.'/'.$course->idnumber.'/'.$participantsresource));
-            $enrolid = $DB->get_record('enrol', array('courseid' => $course->id, 'enrol' => 'rest'))->id;
+            $participants = count(api_call($coursesegmentresource.'/'.$course->id.'/'.$participantsresource));
+            $enrolid = $DB->get_record('enrol', array('courseid' => $course_ilearn->id, 'enrol' => 'rest'))->id;
             $enrolled = $DB->count_records('user_enrolments', array('enrolid' => $enrolid));
 
             $row = array(
                 html_writer::link($courseurl, $code, array('target' => '_blank')),
-                $course->idnumber,
+                $course->id,
                 implode('<br>', $responsibles),
                 implode('<br>', $teachers),
                 $participants == $enrolled ? $participants . ' ' . $OUTPUT->pix_icon('t/approve', '') : "ilearn2: $enrolled, <br/> daisy: $participants",
