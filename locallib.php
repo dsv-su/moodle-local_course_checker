@@ -107,8 +107,9 @@ function check_courses() {
         $code = $course->designation;
 
         if (!$course_ilearn) {
-            $row = array(html_writer::link($courseurl, $code, array('target' => '_blank')),
-                $OUTPUT->error_text('Missing iLearn2 instance!'), '', '', '', date("Y-m-d H:i", strtotime($course->startDate)), date("Y-m-d H:i", strtotime($course->endDate)));
+            $row = array($code, $OUTPUT->error_text('Missing iLearn2 instance!'), '', '', '',
+                date("Y-m-d H:i", strtotime($course->startDate)),
+                date("Y-m-d H:i", strtotime($course->endDate)));
         } else {
             $courseurl = course_get_url($course_ilearn->id);
             // List course responsibles and teachers
