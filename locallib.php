@@ -80,9 +80,9 @@ function check_courses() {
     // Sort by the start date ASC, then by idnumber ASC.
     usort($courses, function($a, $b) {
         if ($a->startDate == $b->startDate) {
-            return ($a->id - $b->id);
+            return $a->id - $b->id;
         } else {
-            return ($a->startDate > $b->startDate);
+            return ($a->startDate > $b->startDate) ? 1 : -1;;
         }
     });
 
